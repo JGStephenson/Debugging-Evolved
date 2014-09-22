@@ -1,0 +1,219 @@
+Symbol Servers and Windows symbols:
+------------------------------------------------
+- Note the local cache directory is c:\symcache\. Occasionally clean up this cache directory.
+srv*c:\symcache*http://referencesource.microsoft.com/symbols;srv*c:\symcache*http://msdl.microsoft.com/download/symbols;C:\Windows\SysWOW64
+
+Local Visual Studio 12 Symbols (x86):
+------------------------------------------------
+C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.CRT;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\Debug_NonRedist\x86\Microsoft.VC120.DebugCRT;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\lib;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\lib\store;C:\Windows\SysWOW64
+
+Local Visual Studio 12 Source:
+------------------------------------------------
+C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\crt\src;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\msclr;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\msclr\com;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\sys;C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\thr
+
+WinDBG - Common Commands:
+------------------------------------------------
+- Go (run the application)
+g
+- Go with Exception Handled 
+gH
+- Go with Exception Not Handled
+gN
+- quit debugging
+qd
+- Turn on dynamic linking output
+.prefer_dml 1
+- list all modules
+lm
+- verbose list of modules with similar match
+lm v m [modulename]
+- first-change or second-chance?
+.lastevent
+- Displays detailed information about the current exception
+!analyze -vv
+
+- Display the Windows Process Environment Block (Computer Name)
+!peb
+dt ntdll!_PEB @$peb
+- Display the process ID
+| 
+- Display the process time
+.time
+- List Module Global Variables
+x [modulename]!
+x
+
+Threads:
+' Display the theads and status
+~
+' Thread execution time
+.ttime
+
+Heap:
+dt ntdll!_HEAP [address]  (Dumps the Windows heap structure; FrontEndHeapType : 0x2 = LFH)
+
+Symbols:
+!sym noisy
+!sym quiet
+-Ignore the version when loading symbols
+.symopt 0x40
+
+Source:
+-Turn on verbose source loading [enable; disable]
+.srcnoisy [1|0] 
+-Toggle source line support [enable; disable; toggle]
+.lines [-e|-d|-t]
+
+Exceptions:
+- Exception and exception context information
+.exr, .cxr, and .ecxr 
+- Display most recent exception
+.exr -1
+- Display exception at Addr
+.exr Addr
+- Display C++ exception class at a memory address
+!cppexr [address]
+- display the exception chain
+!exchain /c
+- find all exception context records and dump them out
+.foreach ( CxrPtr { s -[w1]d 0 l?ffffffff @gs @fs @es @ds } ) { .cxr CxrPtr - 8c }
+.foreach (CxrPtr {}){.cxr ${CxrPtr}-8c}
+- Dump all exceptions on the heaps
+!dumpheap /D -type Exception -stat
+- Error message lookup
+!Error [ExceptionCode]
+- find all inner exceptions
+~* e r @$tid;.echo CONTEXT;s -[1]d poi(@$teb+0x8) poi(@$teb+0x4) 0001003f ; .ECHO END_CONTEXT
+
+- Set Exception Breakpoint commands for Native debugging (syntax and example for access violation exceptions)
+sxe -c "kb;.exr -1;g" [av|dz|iov|*]
+sxe -c "kb;.exr -1;g" av
+
+Locks:
+- Dump locks and report deadlocks
+!dlk
+- Show locks
+!locks
+- Show detail on a lock
+!locks -v [address]
+
+Display:
+- Display local variables
+dv
+- Display unicode string
+du /c[ColumnWidth] [Address] L[Length]
+
+SOS - Common Commands:
+------------------------------------------------
+- Load the SOS extension
+.loadby sos clr
+.loadby sos mscorwks
+.load C:\Windows\Microsoft.NET\Framework\v4.0.30319\sos.dll
+- Dump callstacks for all .NET exceptions and continue execution with the 'g' command
+sxe -c "!pe;!clrstack;g" clr 
+- Run until the CLR JIT module is loaded (needed to set .NET breakpoints or debug startup code)
+sxe ld:clrjit 
+- Run until the CLR is fully loaded (needed to set .NET breakpoints or debug startup code)
+bp clr!EEStartup “g @$ra”
+- Verbose load cordacwks.dll 
+.cordll -ve -u -l
+- Use a Windows loader event to automatically load the SOS extension for you
+sxe -c ".loadby sos clr;g" ld:mscorlib
+
+- Set Exception Breakpoint commands for Managed
+sxe -c "!clrstack;!dso;g" [av|dz|iov|*]
+sxe -c "!clrstack;!clrstack -p;!dso;!pe;g" clr
+
+IIS Request Details:
+- Recent requests (Request time is in HttpContext/_request/_headers/_iis7WorkerRequest/_startTime)
+!aspxpages
+- Convert DateTime Value
+!printdatetime [datetimevalue]
+
+PSSCOR4 - Common Commands:
+------------------------------------------------
+- Load the psscor4 (.NET 4.0+ extension)
+.load psscor4
+- Option switch to automatically looks up and convert the address values for you
+![Command] /D 
+!analyze -vv
+- DumpAllExceptions
+!dae
+- Dump Stacks
+!uniqstack
+
+Heaps:
+- Run a heap check
+!VerifyHeap
+- Get heap statistics
+!heap -s
+!heap -stat
+!heap -s [address] 
+-Display .net heaps including generation and size
+!heapstat -inclUnrooted 
+- Look for memory Leaks
+!heap -stat -h 0
+!heap -flt s [size]
+!heap -p -a [address]
+
+-show all .NET stacks
+~*e!clrstack
+- dump CLR heap
+!dumpgen [0-3]
+-find runtimes that have debug=true
+!finddebugtrue
+-find modules built in debug mode
+!finddebugmodules
+
+Wow64exts - extension for debugging 32 bit applications running under the 64 bit WOW layer:
+------------------------------------------------
+.load wow64exts
+- Switch to 32 bit mode
+!sw
+
+Application Verifier:
+------------------------------------------------
+- Load the application verifier symbols
+.reload /f @"C:\Windows\System32\verifier.pdb“
+- Displays current Application Verifier options
+!avrf
+
+GFlags - Common Commands:
+------------------------------------------------
+- Check the status of GFlag settings
+!gflag
+
+Remote Debugging:
+------------------------------------------------
+- Lists all debugging servers running on the specified network 
+server
+Cdb.exe –QR server(IP or Name)
+- Detach from Process
+.detach
+- End dbgsrv.exe on remote computer. This command will kill 
+the debugged process if you don’t detach first.
+.endpsrv
+- lists all processes running on the (remote) system 
+.tlist
+
+Trapping and logging all exceptions in a process - useful for locating exceptions the code is ignoring but which may be causing defects or crashes down the road
+------------------------------------------------
+- Turn on exception handling
+sxe -c "!clrstack;!clrstack -p;g" av;sxe -c "!clrstack;!clrstack -p;g" dz;sxe -c "!clrstack;!clrstack -p;g" iov;sxe -c "!analyze -vv;g" *;sxe -c "kb;dv;g" vcpp;sxe -c "kb;dv;g" sbo;sxe -c "kb;dv;g" sov;sxe -c "!analyze -vv;g" ser;sxe -c "!analyze -vv" aph;sxe -c "kb;.lastevent;" eh;sxe -c "!PrintException;!clrstack;!clrstack -p;!dso;g" clr
+- Turn off all the exception handlers
+sxi -c "" av;sxi -c "" dz;sxi -c "" iov;sxi -c "" *;sxi -c "" vcpp;sxi -c "" sbo;sxi -c "" sov;sxi -c "" ser;sxi -c "" aph;sxi -c "" eh;sxi -c "" clr
+
+
+Process Dumps:
+------------------------------------------------
+- Create a mini dump with all options
+.dump /ma /u [FileNameandPath]
+
+
+Macros:
+------------------------------------------------
+- Enumerate commands on each frame in the stack
+!for_each_frame ["CommandString"] 
+!for_each_local ["CommandString"] (Alias: @#Local) 
+- Display all locals for all frames in the current stack
+!for_each_frame !for_each_local dt @#Local
